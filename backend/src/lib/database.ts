@@ -293,6 +293,10 @@ export function applyPragmas(db: InstanceType<typeof Database>): void {
 let cacheHits = 0;
 let cacheMisses = 0;
 let cacheEvicts = 0;
+let pingSuccesses = 0;
+let pingFailures = 0;
+let pingState: DatabasePingState = 'unknown';
+const pingErrors = new Map<string, number>();
 
 /**
  * Get a singleton instance of the better‑sqlite3 database with sensible pragmas.
@@ -449,10 +453,47 @@ export function clearStatementCache(): void {
   resetCacheMetrics();
 }
 
-/**
- * Reset ping metrics (no-op retained for backwards compatibility and test resets).
- */
-export function resetPingMetrics(): void {}
+export function resetPingMetrics(): void {
+  pingSuccesses = 0;
+  pingFailures = 0;
+  pingState = 'unknown';
+  pingErrors.clear();
+}
+
+export function getPingState(): DatabasePingState {
+  return pingState;
+}
+
+export function getPingMetricsForPrometheus(): Array<{
+  name: string;
+  type: 'counter' | 'gauge';
+  value: number;
+  help: string;
+  labels?: Record<string, string>;
+}> {
+  const stateValues: Record<DatabasePingState, number> = {
+    healthy: 0,
+    degraded: 1,
+    timeout: 2,
+    busy: 3,
+    permission_denied: 4,
+    connection_failed: 5,
+    corrupted: 6,
+    unknown: 7,
+  };
+  return [
+    { name: 'qlx_db_ping_success_total', type: 'counter', value: pingSuccesses, help: 'Total successful database ping operations' },
+    { name: 'qlx_db_ping_failure_total', type: 'counter', value: pingFailures, help: 'Total failed database ping operations' },
+    { name: 'qlx_db_ping_state', type: 'gauge', value: stateValues[pingState], help: 'Current database ping state' },
+    ...Array.from(pingErrors, ([errorCode, value]) => ({
+      name: 'qlx_db_ping_error_total',
+      type: 'counter' as const,
+      value,
+      help: 'Database ping errors by type',
+      labels: { error_code: errorCode },
+    })),
+  ];
+}
 
 /**
  * Retrieve cache statistics including deterministic metrics.
@@ -497,22 +538,68 @@ export function getPingStats() {
   };
 }
 
-export function getStatementCacheStats() {
-  return { size: statementCache.size, statements: Array.from(statementCache.keys()) };
-}
-
 /**
  * Simple health probe – deterministic, never throws.
  */
 export function pingDatabase(): boolean {
   try {
-    // Use synchronous approach for backward compatibility
     const db = getDatabase();
     const row = db.prepare('SELECT 1 AS ok').get() as { ok?: number } | undefined;
-    return row?.ok === 1;
-  } catch {
+    const success = row?.ok === 1;
+    if (success) {
+      pingSuccesses++;
+      pingState = 'healthy';
+    } else {
+      pingFailures++;
+      pingState = 'degraded';
+    }
+    return success;
+  } catch (error) {
+    pingFailures++;
+    pingState = 'connection_failed';
+    const code = error instanceof Error ? (error as NodeJS.ErrnoException).code ?? 'PING_CONNECTION_FAILED' : 'PING_UNKNOWN';
+    pingErrors.set(code, (pingErrors.get(code) ?? 0) + 1);
     return false;
   }
+}
+
+export async function pingDatabaseDetailed(
+  options: Partial<DatabasePingConfig> = {},
+): Promise<DatabasePingResult> {
+  const startedAt = Date.now();
+  const attempts = Math.max(1, (options.maxRetries ?? 0) + 1);
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const row = getDatabase().prepare(options.pingQuery ?? 'SELECT 1 AS ok').get() as { ok?: number } | undefined;
+      if (row?.ok !== 1) throw new DatabasePingConnectionError('Ping query returned an unexpected result');
+      pingSuccesses++;
+      pingState = 'healthy';
+      return { success: true, latencyMs: Date.now() - startedAt, timestamp: Date.now(), attempts: attempt };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const code = error instanceof DatabaseError ? error.code : 'PING_CONNECTION_FAILED';
+      const pingError = error instanceof DatabasePingError
+        ? error
+        : code === 'PERMISSION_DENIED'
+          ? new DatabasePingPermissionError(message)
+          : code === 'BUSY_TIMEOUT'
+            ? new DatabasePingBusyError(message, attempt)
+            : new DatabasePingConnectionError(message);
+
+      if (pingError.retryable && attempt < attempts) continue;
+      pingFailures++;
+      pingErrors.set(pingError.code, (pingErrors.get(pingError.code) ?? 0) + 1);
+      pingState = pingError.code === 'PING_BUSY' ? 'busy'
+        : pingError.code === 'PING_PERMISSION_DENIED' ? 'permission_denied'
+          : pingError.code === 'PING_TIMEOUT' ? 'timeout'
+            : 'connection_failed';
+      return { success: false, error: pingError, latencyMs: Date.now() - startedAt, timestamp: Date.now(), attempts: attempt };
+    }
+  }
+
+  const error = new DatabasePingConnectionError('Database ping failed');
+  return { success: false, error, latencyMs: Date.now() - startedAt, timestamp: Date.now(), attempts };
 }
 
 /**

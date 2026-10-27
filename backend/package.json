@@ -9,8 +9,9 @@
     "test:seeds": "jest seeds.test.ts",
     "test": "jest",
     "test:coverage": "jest --coverage --forceExit",
-    "dev": "ts-node-dev src/index.ts",
-    "start": "ts-node src/index.ts",
+    "build": "tsc --noEmit",
+    "dev": "node --watch --loader ts-node/esm src/app.ts",
+    "start": "node --loader ts-node/esm src/app.ts",
     "security:scan": "node scripts/dependency-scan.js audit-report.json high && node scripts/secret-scan.js",
     "sbom:generate": "node scripts/generate-sbom.js sbom/backend-sbom.cdx.json",
     "sbom:check": "node scripts/validate-sbom.js sbom/backend-sbom.cdx.json",
@@ -42,11 +43,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.0",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^2.1.9",
     "supertest": "^7.3.1",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

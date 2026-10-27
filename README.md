@@ -1,6 +1,6 @@
-# QuickLendX Protocol
+# El-NinoPortal
 
-QuickLendX is a monorepo containing the complete protocol stack for decentralized invoice financing on Stellar Soroban.
+El-NinoPortal is a monorepo for a decentralized invoice-financing portal on Stellar Soroban. It brings together the Next.js user interface, TypeScript API, and Rust smart contracts in one workspace.
 
 ## Live deployment
 
@@ -18,6 +18,17 @@ QuickLendX is a monorepo containing the complete protocol stack for decentralize
 - `quicklendx-frontend/`: Next.js frontend application for user interaction.
 
 ## Getting Started
+
+The repository is split into two runnable application packages: the backend API and the Next.js frontend.
+
+### Root-level monorepo commands
+
+```bash
+npm install
+npm run dev          # starts backend + frontend together
+npm run dev:backend
+npm run dev:frontend
+```
 
 ### Smart Contracts
 

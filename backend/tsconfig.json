@@ -18,6 +18,10 @@
     },
     "types": ["node", "vitest/globals"]
   },
+  "ts-node": {
+    "experimentalSpecifierResolution": "node",
+    "transpileOnly": true
+  },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -156,7 +156,7 @@ function validateDefinition(
   if (typeof candidate.version !== "number") {
     throw new MigrationLoadError(
       MigrationLoadErrorCodes.INVALID_DEFINITION,
-      `Migration ${file} is missing a numeric `version` export.`,
+      `Migration ${file} is missing a numeric version export.`,
     );
   }
   if (candidate.version !== parsed.version) {
@@ -168,7 +168,7 @@ function validateDefinition(
   if (typeof candidate.up !== "function") {
     throw new MigrationLoadError(
       MigrationLoadErrorCodes.INVALID_DEFINITION,
-      `Migration ${file} is missing a `up` function.`,
+      `Migration ${file} is missing an up function.`,
     );
   }
   return def as MigrationDefinition;
@@ -254,7 +254,7 @@ export async function loadMigrationsFromFS(): Promise<ParsedMigration[]> {
       const loaded = require(filePath);
       def = (loaded && (loaded.default ?? loaded)) as MigrationDefinition;
     } catch (err: unknown) {
-      const message = err instance of Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
       throw new MigrationLoadError(
         MigrationLoadErrorCodes.MISSING_DEFAULT_EXPORT,
         `Failed to load migration ${file}: ${message}`,
@@ -806,7 +806,7 @@ export async function runMigrations(options: { dryRun?: boolean; allowDown?: boo
           if (verbose) console.log(`✅ Applied migration ${version}_${fileMig.name} (${appliedDurationMs}ms)`);
           if (verbose) console.log(`✅ Applied migration ${version}_${fileMig.name} (${state.durationMs}ms)`);
         } catch (err: any) {
-          console.error(`❌ Migration ${version}_${fileMig.name} failed:', err.message);
+          console.error(`Migration ${version}_${fileMig.name} failed:`, err.message);
           throw err;
         }
       } else {
@@ -876,7 +876,7 @@ export async function runMigrations(options: { dryRun?: boolean; allowDown?: boo
 
 if (verbose) console.log(`⬩ Rolled back migration ${version}_${fileMig.name} (${durationMs}ms)`);
         } catch (err: any) {
-          console.error(`❌ Rollback of ${version}_${fileMig.name} failed:', err.message);
+          console.error(`Rollback of ${version}_${fileMig.name} failed:`, err.message);
           throw err;
         }
       } else {

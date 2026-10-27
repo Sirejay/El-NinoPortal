@@ -1,0 +1,26 @@
+{
+  "name": "el-nino-portal",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "quicklendx-frontend"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:backend dev:frontend",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix quicklendx-frontend run dev",
+    "start": "npm-run-all --parallel start:backend start:frontend",
+    "start:backend": "npm --prefix backend run start",
+    "start:frontend": "npm --prefix quicklendx-frontend run start",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix quicklendx-frontend run build",
+    "lint:frontend": "npm --prefix quicklendx-frontend run lint",
+    "test:backend": "npm --prefix backend run test",
+    "test:frontend": "npm --prefix quicklendx-frontend run test",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.1"
+  }
+}

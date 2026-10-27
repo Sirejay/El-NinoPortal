@@ -178,11 +178,7 @@ export class ExposureService {
   private _allowedCurrencies: Set<string> | null = null;
 
   constructor(deps: Partial<ExposureServiceDeps> = {}) {
-    this._deps = {
-      mockBids: MOCK_BIDS,
-      mockSettlements: MOCK_SETTLEMENTS,
-      ...deps,
-    };
+    this._deps = { ...deps };
     this._capUsd = this._parseCap(config.EXPOSURE_CAP_PER_INVESTOR_USD);
   }
 
@@ -372,7 +368,7 @@ export class ExposureService {
     let total = 0n;
 
     // Legacy in-memory mock
-    for (const bid of this._deps.mockBids) {
+    for (const bid of this._deps.mockBids ?? MOCK_BIDS) {
       if (!bid || bid.investor !== investor) continue;
       if (bid.status !== BidStatus.Placed) continue;
       try {
@@ -430,7 +426,7 @@ export class ExposureService {
     ]);
 
     // Legacy mock
-    for (const s of this._deps.mockSettlements) {
+    for (const s of this._deps.mockSettlements ?? MOCK_SETTLEMENTS) {
       if (!s) continue;
       if (s.recipient !== investor) continue;
       if (!unsettledStatuses.has(s.status)) continue;

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import { pathToFileURL } from "node:url";
 import { rateLimitMiddleware, perKeyRateLimitMiddleware } from "./middleware/rate-limit";
 import { loadSheddingMiddleware } from "./middleware/load-shedding";
 import { errorHandler } from "./middleware/error-handler";
@@ -107,5 +108,12 @@ app.use((req, res) => {
 
 // Error handling
 app.use(errorHandler);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const port = Number(process.env.PORT ?? 3001);
+  app.listen(port, () => {
+    console.log(`QuickLendX backend listening on http://localhost:${port}`);
+  });
+}
 
 export default app;
